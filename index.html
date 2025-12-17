@@ -19,12 +19,16 @@
     .pill { display:inline-block; padding: 6px 10px; background:#fff; border-radius: 999px; border: 1px solid rgba(0,0,0,.08); font-size: 12px; }
     .screen { display:none; margin-top: 16px; }
     .screen.active { display:block; }
+    .mwWrap { min-height: 96px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     #mwLine {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 36px;
+      font-size: 26px;
       white-space: pre;
       min-height: 64px;
       user-select: none;
+      text-align: center;
+      width: 100%;
+      box-sizing: border-box;
     }
     #breakFixLine {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -53,12 +57,12 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>Self-Paced Reading（Moving Window / Jiang型）</h1>
+      <h1>Self-Paced Reading</h1>
       <p class="muted">名前とIDを入力して実験を開始してください。</p>
 
       <div id="setup" class="screen active">
         <h2>セットアップ</h2>
-        <p class="muted">名前とIDを入力し、実験用JSONを読み込んでください。</p>
+        <p class="muted">名前とIDを入力してください。</p>
         <div class="row field-row">
           <div class="field">
             <label for="participantName">参加者名（画面表示用）</label>
@@ -70,7 +74,6 @@
           </div>
         </div>
         <div class="row">
-          <button id="btnLoad">JSONを読み込む</button>
           <button id="btnProceed" class="secondary" disabled>説明へ進む</button>
           <span id="loadStatus" class="muted small"></span>
         </div>
@@ -108,7 +111,7 @@
         <p class="muted small">
           準備ができたら <span class="kbd">Space</span> を押してください。
         </p>
-        <div id="mwLine">+</div>
+        <div class="mwWrap"><div id="mwLine">+</div></div>
       </div>
 
       <div id="practiceFeedback" class="screen">
@@ -125,7 +128,7 @@
           <span class="muted small">※ 本試行では<b>正誤フィードバックは表示されません</b>。</span>
         </p>
         <p class="muted small">準備ができたら <span class="kbd">Space</span> を押してください。</p>
-        <div id="mwLine">+</div>
+        <div class="mwWrap"><div id="mwLine">+</div></div>
       </div>
 
       <div id="breakFix" class="screen">
@@ -140,7 +143,7 @@
 
       <div id="reading" class="screen">
         <p class="muted small">Space：次の語</p>
-        <div id="mwLine"></div>
+        <div class="mwWrap"><div id="mwLine"></div></div>
       </div>
 
       <div id="question" class="screen">

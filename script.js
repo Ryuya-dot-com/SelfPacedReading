@@ -20,7 +20,6 @@ const screens = {
   done: document.getElementById("done"),
 };
 
-const btnLoad = document.getElementById("btnLoad");
 const btnProceed = document.getElementById("btnProceed");
 const btnToPractice = document.getElementById("btnToPractice");
 
@@ -154,11 +153,7 @@ function setMwLine(text) {
 }
 
 function renderMovingWindow(tokens, idx) {
-  let shift = 0;
-  for (let i = 0; i < idx; i++) {
-    shift += (tokens[i]?.length ?? 0) + 1;
-  }
-  return " ".repeat(shift) + tokens[idx];
+  return tokens[idx];
 }
 
 function normalizeAnswerKey(key) {
@@ -481,6 +476,10 @@ function startBreak() {
 
 // ---------- Keyboard handling ----------
 document.addEventListener("keydown", (ev) => {
+  if (ev.repeat) {
+    ev.preventDefault();
+    return;
+  }
   const key = ev.key;
 
   if (key === "Escape") {
@@ -575,33 +574,29 @@ document.addEventListener("keydown", (ev) => {
 });
 
 // ---------- Buttons ----------
-btnLoad.addEventListener("click", async () => {
-  computeAssignment();
-  if (!participantName || !participantId) {
-    loadStatus.textContent = "";
-    loadError.textContent = "参加者名とIDを入力してください。";
-    return;
-  }
+async function loadMaterials() {
   loadError.textContent = "";
   loadStatus.textContent = "読み込み中…";
   try {
     const res = await fetch(DEFAULT_JSON, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     MATERIALS = await res.json();
-
-    seedRNGFromAssignment();
-    buildMainTrials();
-    buildPracticeTrials();
-    resetRunState();
-
-    loadStatus.textContent = `OK: items=${MATERIALS.items?.length ?? 0}, trials(list)=${MAIN_TRIALS.length}, practice=${PRACTICE_TRIALS.length}`;
-    btnProceed.disabled = !(participantName && participantId);
+    computeAssignment();
+    if (participantName && participantId) {
+      seedRNGFromAssignment();
+      buildMainTrials();
+      buildPracticeTrials();
+      resetRunState();
+      loadStatus.textContent = `読み込み完了: items=${MATERIALS.items?.length ?? 0}, trials(list)=${MAIN_TRIALS.length}, practice=${PRACTICE_TRIALS.length}`;
+    } else {
+      loadStatus.textContent = `読み込み完了: items=${MATERIALS.items?.length ?? 0}（名前とIDを入力してください）`;
+    }
   } catch (e) {
     loadStatus.textContent = "";
     loadError.textContent = `JSONの読み込みに失敗しました: ${e.message}（同じフォルダにJSONを置いてください）`;
   }
   updateProceedEnabled();
-});
+}
 
 btnProceed.addEventListener("click", () => {
   showScreen("instructions");
@@ -674,3 +669,6 @@ window.addEventListener("beforeunload", (e) => {
   e.preventDefault();
   e.returnValue = "";
 });
+
+// preload materials automatically
+loadMaterials();
