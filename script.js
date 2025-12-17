@@ -40,6 +40,8 @@ const btnRestart      = document.getElementById("btnRestart");
 
 const summaryPill = document.getElementById("summaryPill");
 const filePill = document.getElementById("filePill");
+const progressWrap = document.getElementById("progressWrap");
+const progressFill = document.getElementById("progressFill");
 
 // participant / run state
 let participantName = "";
@@ -276,6 +278,18 @@ function resetRunState() {
   questionStartT = null;
 }
 
+function updateProgressBar(show, completed, total) {
+  if (!progressWrap || !progressFill) return;
+  if (!show || !total || total <= 0) {
+    progressWrap.style.display = "none";
+    progressFill.style.width = "0%";
+    return;
+  }
+  const pct = Math.min(100, Math.round((completed / total) * 100));
+  progressFill.style.width = `${pct}%`;
+  progressWrap.style.display = "block";
+}
+
 function abortExperiment() {
   if (!confirm("実験を中断しますか？")) return;
   finishExperiment();
@@ -339,6 +353,7 @@ function advanceToken(trial, trialIndex, hasQuestion) {
       questionStartT = performance.now();
     } else {
       // no question -> next trial immediately (Jiang design)
+      updateProgressBar(false);
       if (phase === "practice") nextPracticeTrial();
       else nextMainTrial();
     }
@@ -382,6 +397,10 @@ function logQuestionResponse(trial, trialIndex, hasQuestion, answer) {
     correct,
   });
   questionStartT = null;
+  if (phase === "main") {
+    const completed = mainTrialIndex + 1; // current trial just answered
+    updateProgressBar(true, completed, MAIN_TRIALS.length);
+  }
   return correct;
 }
 
@@ -448,6 +467,7 @@ function nextMainTrial() {
 
   setMwLine("+");
   showScreen("mainIntro");
+  updateProgressBar(false);
 }
 
 function finishExperiment() {

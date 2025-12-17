@@ -52,13 +52,15 @@
     .field label { font-size: 13px; color: var(--muted); }
     .field input { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,.15); font-size: 14px; }
     .field-row { align-items: flex-end; }
+    .progress-wrap { display:none; margin-top: 12px; }
+    .progress-bar { width:100%; height: 10px; background: rgba(0,0,0,.08); border-radius: 8px; overflow:hidden; }
+    .progress-bar span { display:block; height:100%; background:#111; width:0%; transition: width 0.2s ease; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
       <h1>Self-Paced Reading</h1>
-      <p class="muted">名前とIDを入力して実験を開始してください。</p>
 
       <div id="setup" class="screen active">
         <h2>セットアップ</h2>
@@ -129,6 +131,9 @@
         </p>
         <p class="muted small">準備ができたら <span class="kbd">Space</span> を押してください。</p>
         <div class="mwWrap"><div id="mwLine">+</div></div>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-bar"><span id="progressFill"></span></div>
+        </div>
       </div>
 
       <div id="breakFix" class="screen">
