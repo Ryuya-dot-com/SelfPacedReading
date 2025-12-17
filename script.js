@@ -96,6 +96,7 @@ let mainTrialIndex = -1;
 // PRACTICE trials
 let PRACTICE_TRIALS = [];
 let practiceIndex = -1;
+let PRACTICE_HAS_Q = [];
 
 // shared state
 let tokenIndex = -1;
@@ -240,19 +241,139 @@ function buildMainTrials() {
   const byId = {};
   for (const it of MATERIALS.items) byId[it.item_id] = it;
 
-  const ids = [...list];
-  // Jiang: randomize sentence order for each participant
-  shuffleInPlace(ids, RNG);
+  const testsPart = [];
+  const testsSub = [];
+  const fillers = [];
+  for (const id of list) {
+    const item = byId[id];
+    if (!item) continue;
+    if (item.type === "test_partitive_plural") testsPart.push(item);
+    else if (item.type === "test_subcategorization") testsSub.push(item);
+    else fillers.push(item);
+  }
 
-  MAIN_TRIALS = ids.map(id => byId[id]).filter(Boolean);
+  const blockSizes = [];
+  let remaining = list.length;
+  while (remaining > 0) {
+    const size = Math.min(BREAK_INTERVAL, remaining);
+    blockSizes.push(size);
+    remaining -= size;
+  }
 
-  // Jiang: comprehension questions on half of sentences
+  shuffleInPlace(testsPart, RNG);
+  shuffleInPlace(testsSub, RNG);
+  shuffleInPlace(fillers, RNG);
+
+  function allocateCounts(remCounts, blockSize) {
+    const totalRem = remCounts.part + remCounts.sub + remCounts.fill;
+    const base = { part: 0, sub: 0, fill: 0 };
+    if (totalRem === 0) return base;
+    const desired = {
+      part: (remCounts.part / totalRem) * blockSize,
+      sub: (remCounts.sub / totalRem) * blockSize,
+      fill: (remCounts.fill / totalRem) * blockSize,
+    };
+    const order = ["part", "sub", "fill"];
+    const remainders = {};
+    let assigned = 0;
+    for (const k of order) {
+      base[k] = Math.floor(desired[k]);
+      if (base[k] > remCounts[k]) base[k] = remCounts[k];
+      assigned += base[k];
+      remainders[k] = desired[k] - base[k];
+    }
+    let left = blockSize - assigned;
+    const sorted = order.slice().sort((a,b)=>remainders[b]-remainders[a]);
+    for (const k of sorted) {
+      if (left <= 0) break;
+      const give = Math.min(left, remCounts[k] - base[k]);
+      base[k] += give;
+      left -= give;
+    }
+    // if still left, distribute where possible
+    if (left > 0) {
+      for (const k of order) {
+        if (left <= 0) break;
+        const give = Math.min(left, remCounts[k] - base[k]);
+        base[k] += give;
+        left -= give;
+      }
+    }
+    return base;
+  }
+
+  function buildBlock(counts) {
+    let consecTest = 0;
+    const block = [];
+    const pools = { part: testsPart, sub: testsSub, fill: fillers };
+    for (let i = 0; i < counts.part + counts.sub + counts.fill; i++) {
+      const options = [];
+      if (counts.fill > 0) options.push("fill");
+      if (counts.part > 0 && consecTest < 3) options.push("part");
+      if (counts.sub > 0 && consecTest < 3) options.push("sub");
+      if (options.length === 0) return null;
+      shuffleInPlace(options, RNG);
+      const chosen = options[0];
+      const item = pools[chosen].pop();
+      if (!item) return null;
+      block.push(item);
+      counts[chosen] -= 1;
+      if (chosen === "fill") consecTest = 0;
+      else consecTest += 1;
+    }
+    return block;
+  }
+
+  MAIN_TRIALS = [];
+  for (const size of blockSizes) {
+    const remCounts = {
+      part: testsPart.length,
+      sub: testsSub.length,
+      fill: fillers.length,
+    };
+    let counts = allocateCounts(remCounts, size);
+    let block = null;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      // try to build; if fail, reshuffle pools within remaining and retry
+      block = buildBlock({...counts});
+      if (block) break;
+      shuffleInPlace(testsPart, RNG);
+      shuffleInPlace(testsSub, RNG);
+      shuffleInPlace(fillers, RNG);
+    }
+    if (!block) throw new Error("ランダマイズに失敗しました（制約により配置不可）");
+    MAIN_TRIALS.push(...block);
+  }
+
+  // 質問付与: 前半/後半ごとに50%±1かつ test/filler で均等（C案）
   MAIN_HAS_Q = new Map();
-  const idxs = MAIN_TRIALS.map((_, i) => i);
-  shuffleInPlace(idxs, RNG);
-  const nQ = Math.floor(MAIN_TRIALS.length / 2);
-  const qSet = new Set(idxs.slice(0, nQ));
-  MAIN_TRIALS.forEach((t, i) => MAIN_HAS_Q.set(t.item_id, qSet.has(i)));
+  function assignQuestionsForHalf(trialsHalf) {
+    const testIdx = [];
+    const fillerIdx = [];
+    trialsHalf.forEach((t, i) => {
+      if (t.type === "test_partitive_plural" || t.type === "test_subcategorization") testIdx.push(i);
+      else fillerIdx.push(i);
+    });
+    const pick = (arr) => {
+      const target = Math.round(arr.length / 2);
+      const idxs = shuffleInPlace([...arr], RNG).slice(0, target);
+      return new Set(idxs);
+    };
+    const qTest = pick(testIdx);
+    const qFill = pick(fillerIdx);
+    const result = new Set();
+    qTest.forEach(i => result.add(i));
+    qFill.forEach(i => result.add(i));
+    return result;
+  }
+
+  const mid = Math.floor(MAIN_TRIALS.length / 2);
+  const half1 = MAIN_TRIALS.slice(0, mid);
+  const half2 = MAIN_TRIALS.slice(mid);
+  const qHalf1 = assignQuestionsForHalf(half1);
+  const qHalf2 = assignQuestionsForHalf(half2);
+  half1.forEach((t, i) => MAIN_HAS_Q.set(t.item_id, qHalf1.has(i)));
+  half2.forEach((t, i) => MAIN_HAS_Q.set(t.item_id, qHalf2.has(i)));
 }
 
 function buildPracticeTrials() {
@@ -262,7 +383,11 @@ function buildPracticeTrials() {
   shuffleInPlace(idxs, RNG);
   PRACTICE_TRIALS = idxs.slice(0, 10).map(i => pool[i]);
 
-  // Practice always has a question (and feedback) to train keys
+  // Question presence in practice: 6 with Q, 4 without (shuffled)
+  const pattern = Array(6).fill(true).concat(Array(4).fill(false));
+  shuffleInPlace(pattern, RNG);
+  PRACTICE_HAS_Q = pattern;
+
   practiceIndex = -1;
 }
 
@@ -563,7 +688,8 @@ document.addEventListener("keydown", (ev) => {
       ev.preventDefault();
       if (phase === "practice") {
         const t = PRACTICE_TRIALS[practiceIndex];
-        advanceToken(t, practiceIndex, true);
+        const hasQ = PRACTICE_HAS_Q[practiceIndex] === true;
+        advanceToken(t, practiceIndex, hasQ);
       } else {
         const t = MAIN_TRIALS[mainTrialIndex];
         const hasQ = MAIN_HAS_Q.get(t.item_id) === true;
