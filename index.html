@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Self-Paced Reading (Moving Window)</title>
+  <style>
+    :root { --fg:#111; --muted:#666; --bg:#fff; --card:#f6f6f6; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+           background: var(--bg); color: var(--fg); margin: 0; padding: 24px; }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .card { background: var(--card); border-radius: 16px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    h2 { font-size: 18px; margin: 0 0 10px; }
+    p { line-height: 1.7; }
+    ul { line-height: 1.7; }
+    .muted { color: var(--muted); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .pill { display:inline-block; padding: 6px 10px; background:#fff; border-radius: 999px; border: 1px solid rgba(0,0,0,.08); font-size: 12px; }
+    .screen { display:none; margin-top: 16px; }
+    .screen.active { display:block; }
+    #mwLine {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 36px;
+      white-space: pre;
+      min-height: 64px;
+      user-select: none;
+    }
+    #breakFixLine {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 36px;
+      white-space: pre;
+      min-height: 64px;
+      user-select: none;
+      text-align: center;
+    }
+    #questionText { font-size: 22px; }
+    .kbd { font-family: ui-monospace, monospace; border: 1px solid rgba(0,0,0,.2); background:#fff; padding: 2px 8px; border-radius: 8px; }
+    button { cursor:pointer; border: 0; background:#111; color:#fff; padding: 10px 14px; border-radius: 12px; font-size: 14px; }
+    button.secondary { background:#444; }
+    button.ghost { background: transparent; color: #111; border: 1px solid rgba(0,0,0,.2); }
+    .small { font-size: 12px; }
+    .hr { height:1px; background: rgba(0,0,0,.1); margin: 14px 0; }
+    .error { color: #b00020; font-weight: 600; }
+    .ok { color: #0b6b0b; font-weight: 600; }
+    .footer { margin-top: 12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .field { display:flex; flex-direction:column; gap:6px; min-width: 200px; }
+    .field label { font-size: 13px; color: var(--muted); }
+    .field input { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,.15); font-size: 14px; }
+    .field-row { align-items: flex-end; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Self-Paced Reading（Moving Window / Jiang型）</h1>
+      <p class="muted">名前とIDを入力して実験を開始してください。</p>
+
+      <div id="setup" class="screen active">
+        <h2>セットアップ</h2>
+        <p class="muted">名前とIDを入力し、実験用JSONを読み込んでください。</p>
+        <div class="row field-row">
+          <div class="field">
+            <label for="participantName">参加者名（画面表示用）</label>
+            <input id="participantName" type="text" placeholder="例: Mark Brown" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="participantId">参加者ID</label>
+            <input id="participantId" type="text" placeholder="例: 001" autocomplete="off" />
+          </div>
+        </div>
+        <div class="row">
+          <button id="btnLoad">JSONを読み込む</button>
+          <button id="btnProceed" class="secondary" disabled>説明へ進む</button>
+          <span id="loadStatus" class="muted small"></span>
+        </div>
+        <p id="loadError" class="error"></p>
+      </div>
+
+      <div id="instructions" class="screen">
+        <h2>説明</h2>
+        <p>
+          これから英語の文が <b>1語ずつ</b> 画面に提示されます。<br>
+          あなたの課題は、文を<b>意味理解のため</b>に読み、できるだけ<b>速く</b>次の語へ進むことです。
+        </p>
+        <ul>
+          <li><span class="kbd">Space</span>：次の語を表示します（前の語は消えます）。</li>
+          <li>文の途中で戻って読み直すことはできません。</li>
+          <li>時々、文の内容理解を確認するための質問が出ます。</li>
+          <li>質問は <span class="kbd">F</span>=Yes / <span class="kbd">J</span>=No で回答します。</li>
+          <li><b>文法判断は不要</b>です。内容が理解できるかを優先してください。</li>
+          <li>本試行では <b>20試行ごとに自動で休憩</b>が入ります。表示が出たらスペースで再開できます。</li>
+        </ul>
+        <p class="muted small">
+          ※ 質問は全試行の半分にだけ提示されます（Jiang型）。
+        </p>
+        <div class="row">
+          <button id="btnToPractice" class="secondary">練習へ</button>
+        </div>
+      </div>
+
+      <div id="practiceIntro" class="screen">
+        <h2>練習（10試行）</h2>
+        <p>
+          練習を行います。練習では質問に対して正誤フィードバックが表示されます。<br>
+          （本試行ではフィードバックは出ません）
+        </p>
+        <p class="muted small">
+          準備ができたら <span class="kbd">Space</span> を押してください。
+        </p>
+        <div id="mwLine">+</div>
+      </div>
+
+      <div id="practiceFeedback" class="screen">
+        <h2>練習フィードバック</h2>
+        <p id="fbText"></p>
+        <p class="muted small">続けるには <span class="kbd">Space</span></p>
+      </div>
+
+      <div id="mainIntro" class="screen">
+        <h2>本試行</h2>
+        <p>
+          本試行を開始します。<br>
+          できるだけ<b>速く</b>読み、質問にはできるだけ<b>正確</b>に答えてください。<br>
+          <span class="muted small">※ 本試行では<b>正誤フィードバックは表示されません</b>。</span>
+        </p>
+        <p class="muted small">準備ができたら <span class="kbd">Space</span> を押してください。</p>
+        <div id="mwLine">+</div>
+      </div>
+
+      <div id="breakFix" class="screen">
+        <p class="muted small">休憩前の注視点です（3秒）</p>
+        <div id="breakFixLine">+</div>
+      </div>
+
+      <div id="break" class="screen">
+        <h2>休憩</h2>
+        <p>休憩です。準備ができたらスペースキーを押してください。</p>
+      </div>
+
+      <div id="reading" class="screen">
+        <p class="muted small">Space：次の語</p>
+        <div id="mwLine"></div>
+      </div>
+
+      <div id="question" class="screen">
+        <p class="muted small">回答：<span class="kbd">F</span>=Yes / <span class="kbd">J</span>=No</p>
+        <div id="questionText"></div>
+      </div>
+
+      <div id="done" class="screen">
+        <h2 style="margin:0 0 10px;">完了</h2>
+        <p class="muted">データを保存してください。</p>
+        <div class="row">
+          <button id="btnDownloadJson">JSONで保存</button>
+          <button id="btnDownloadCsv" class="ghost">Excelで保存</button>
+          <button id="btnRestart" class="secondary">最初から</button>
+        </div>
+        <div class="footer">
+          <span class="pill" id="summaryPill">—</span>
+          <span class="pill" id="filePill">—</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
