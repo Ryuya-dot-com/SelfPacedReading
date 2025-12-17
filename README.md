@@ -1,4 +1,4 @@
-# Self-Paced Reading (Jiang-style) — Experiment Notes
+# Self-Paced Reading: Replication of Jiang (2007)
 
 ## 1. 目的と前提
 - L2 学習者が文法知識を **自動的に運用**できているか（integrated knowledge / automatic competence）を検証する。
@@ -51,12 +51,12 @@
 - 主要フィールド: `ts_iso, t_rel_ms, participant_id, participant_name, assigned_list, seed_used, phase, event(token/question), trial_index, item_id, set_id, item_type, structure, condition, has_question, token_index, token, rt_ms, question, correct_answer, response, correct`
 - ブラウザ再読み込み/閉じる時は警告を出してデータ喪失を防止（完了後は解除）。
 
-## 7. 参加者除外と処理の指針（参考）
+## 7. 参加者除外と処理の指針
 - 理解正答率 < 80% を除外基準に（Jiang に準拠）。
 - RT 外れ値: 個人平均 ±2SD、および 200ms 未満 / 2000ms 超を除外。
 - 分析単位: 参加者分析 (F1/t1), 項目分析 (F2/t2)。
 
-## 8. 使い方（最小手順）
+## 8. 使い方
 1) `index.html` をブラウザで開く。  
 2) 参加者名・IDを入力し、`jiang_full_materials_with_fillers_list1_list2.json` を読み込む。  
 3) 「説明へ進む」→ 練習 → 本試行。休憩指示が出たら Space で再開。  
