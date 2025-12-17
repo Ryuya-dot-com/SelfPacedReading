@@ -42,6 +42,7 @@ const summaryPill = document.getElementById("summaryPill");
 const filePill = document.getElementById("filePill");
 const progressWrap = document.getElementById("progressWrap");
 const progressFill = document.getElementById("progressFill");
+const trialCountText = document.getElementById("trialCountText");
 
 // participant / run state
 let participantName = "";
@@ -374,6 +375,12 @@ function buildMainTrials() {
   const qHalf2 = assignQuestionsForHalf(half2);
   half1.forEach((t, i) => MAIN_HAS_Q.set(t.item_id, qHalf1.has(i)));
   half2.forEach((t, i) => MAIN_HAS_Q.set(t.item_id, qHalf2.has(i)));
+
+  if (trialCountText) {
+    const total = MAIN_TRIALS.length;
+    const nBreaks = blockSizes.length - 1;
+    trialCountText.textContent = `全体 ${total} 試行（${BREAK_INTERVAL} 試行ごとに休憩 × ${nBreaks}）`;
+  }
 }
 
 function buildPracticeTrials() {
@@ -522,10 +529,6 @@ function logQuestionResponse(trial, trialIndex, hasQuestion, answer) {
     correct,
   });
   questionStartT = null;
-  if (phase === "main") {
-    const completed = mainTrialIndex + 1; // current trial just answered
-    updateProgressBar(true, completed, MAIN_TRIALS.length);
-  }
   return correct;
 }
 
@@ -608,6 +611,7 @@ function finishExperiment() {
   filePill.textContent = xlsxName;
   downloadText(toExcelXml(data), xlsxName, "application/vnd.ms-excel");
   warnOnUnload = false;
+  updateProgressBar(false);
 }
 
 function startBreak() {
@@ -616,6 +620,8 @@ function startBreak() {
   showScreen("breakFix");
   breakTimer = setTimeout(() => {
     showScreen("break");
+    const completed = mainTrialIndex; // trials finished so far
+    updateProgressBar(true, completed, MAIN_TRIALS.length);
   }, 3000);
 }
 
