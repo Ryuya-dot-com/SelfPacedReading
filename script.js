@@ -216,7 +216,8 @@ function toExcelXml(rows) {
     .replace(/\"/g,"&quot;");
   const rowXml = (cells) => `<Row>${cells.map(v => `<Cell><Data ss:Type="String">${esc(v ?? "")}</Data></Cell>`).join("")}</Row>`;
   const bodyRows = rows.map(r => rowXml(headers.map(h => r[h])));
-  return `<?xml version="1.0"?>
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
  xmlns:o="urn:schemas-microsoft-com:office:office"
  xmlns:x="urn:schemas-microsoft-com:office:excel"
@@ -611,9 +612,9 @@ function finishExperiment() {
   const acc = nQ ? Math.round((nCorrect / nQ) * 1000) / 10 : 0;
   summaryPill.textContent = `Main questions: ${nCorrect}/${nQ} (${acc}%)`;
 
-  const xlsxName = buildFilename("xlsx");
-  filePill.textContent = xlsxName;
-  downloadText(toExcelXml(data), xlsxName, "application/vnd.ms-excel");
+  const xmlName = buildFilename("xml");
+  filePill.textContent = xmlName;
+  downloadText(toExcelXml(data), xmlName, "application/vnd.ms-excel");
   warnOnUnload = false;
   updateProgressBar(false);
 }
@@ -763,7 +764,7 @@ btnToPractice.addEventListener("click", () => {
 });
 
 btnDownloadCsv.addEventListener("click", () => {
-  downloadText(toExcelXml(data), buildFilename("xlsx"), "application/vnd.ms-excel");
+  downloadText(toExcelXml(data), buildFilename("xml"), "application/vnd.ms-excel");
 });
 
 btnRestart.addEventListener("click", () => {
