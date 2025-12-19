@@ -34,7 +34,6 @@ const breakFixLine = document.getElementById("breakFixLine");
 
 const fbText = document.getElementById("fbText");
 
-const btnDownloadJson = document.getElementById("btnDownloadJson");
 const btnDownloadCsv  = document.getElementById("btnDownloadCsv");
 const btnRestart      = document.getElementById("btnRestart");
 
@@ -183,7 +182,8 @@ function downloadText(text, filename, mime="application/json") {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Delay revoke so Safari doesn't cancel the download.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function toCSV(rows) {
@@ -209,7 +209,11 @@ function toExcelXml(rows) {
     "phase","event","trial_index","item_id","set_id","item_type","structure","condition",
     "has_question","token_index","token","rt_ms","question","correct_answer","response","correct"
   ];
-  const esc = (s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;");
+  const esc = (s) => String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/\"/g,"&quot;");
   const rowXml = (cells) => `<Row>${cells.map(v => `<Cell><Data ss:Type="String">${esc(v ?? "")}</Data></Cell>`).join("")}</Row>`;
   const bodyRows = rows.map(r => rowXml(headers.map(h => r[h])));
   return `<?xml version="1.0"?>
@@ -756,28 +760,6 @@ btnProceed.addEventListener("click", () => {
 
 btnToPractice.addEventListener("click", () => {
   startPractice();
-});
-
-btnDownloadJson.addEventListener("click", () => {
-  const payload = {
-    meta: MATERIALS?.meta ?? {},
-    run_info: {
-      participant_id: participantId,
-      participant_name: participantName,
-      assigned_list: assignedList,
-      list_source,
-      seed_used: seedUsed,
-      seed_source,
-      list: assignedList,
-      seed: seedUsed,
-      started_at: runStartedAtIso,
-      exported_at: new Date().toISOString(),
-      question_rate: 0.5,
-      practice_trials: 10
-    },
-    data
-  };
-  downloadText(JSON.stringify(payload, null, 2), buildFilename("json"), "application/json");
 });
 
 btnDownloadCsv.addEventListener("click", () => {
