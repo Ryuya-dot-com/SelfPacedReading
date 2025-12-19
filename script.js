@@ -186,7 +186,7 @@ function downloadText(text, filename, mime="application/json") {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function toCSV(rows) {
+function toCSV(rows, includeBom=false) {
   const headers = [
     "ts_iso","t_rel_ms","participant_id","participant_name","assigned_list","list","seed_used",
     "phase","event","trial_index","item_id","set_id","item_type","structure","condition",
@@ -200,7 +200,8 @@ function toCSV(rows) {
   };
   const lines = [headers.join(",")];
   for (const r of rows) lines.push(headers.map(h => esc(r[h])).join(","));
-  return lines.join("\n");
+  const csv = lines.join("\n");
+  return includeBom ? `\ufeff${csv}` : csv;
 }
 
 function seedRNGFromAssignment() {
@@ -585,7 +586,7 @@ function finishExperiment() {
 
   const csvName = buildFilename("csv");
   filePill.textContent = csvName;
-  downloadText(toCSV(data), csvName, "text/csv");
+  downloadText(toCSV(data, true), csvName, "text/csv;charset=utf-8");
   warnOnUnload = false;
   updateProgressBar(false);
 }
@@ -735,7 +736,7 @@ btnToPractice.addEventListener("click", () => {
 });
 
 btnDownloadCsv.addEventListener("click", () => {
-  downloadText(toCSV(data), buildFilename("csv"), "text/csv");
+  downloadText(toCSV(data, true), buildFilename("csv"), "text/csv;charset=utf-8");
 });
 
 btnRestart.addEventListener("click", () => {
