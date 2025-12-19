@@ -203,35 +203,6 @@ function toCSV(rows) {
   return lines.join("\n");
 }
 
-function toExcelXml(rows) {
-  const headers = [
-    "ts_iso","t_rel_ms","participant_id","participant_name","assigned_list","list","seed_used",
-    "phase","event","trial_index","item_id","set_id","item_type","structure","condition",
-    "has_question","token_index","token","rt_ms","question","correct_answer","response","correct"
-  ];
-  const esc = (s) => String(s ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/\"/g,"&quot;");
-  const rowXml = (cells) => `<Row>${cells.map(v => `<Cell><Data ss:Type="String">${esc(v ?? "")}</Data></Cell>`).join("")}</Row>`;
-  const bodyRows = rows.map(r => rowXml(headers.map(h => r[h])));
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:html="http://www.w3.org/TR/REC-html40">
- <Worksheet ss:Name="SPR">
-  <Table>
-   ${rowXml(headers)}
-   ${bodyRows.join("\\n   ")}
-  </Table>
- </Worksheet>
-</Workbook>`;
-}
-
 function seedRNGFromAssignment() {
   if (seedUsed === null || !Number.isFinite(seedUsed)) {
     throw new Error("参加者名とIDからSeedを決めてください。");
@@ -612,9 +583,9 @@ function finishExperiment() {
   const acc = nQ ? Math.round((nCorrect / nQ) * 1000) / 10 : 0;
   summaryPill.textContent = `Main questions: ${nCorrect}/${nQ} (${acc}%)`;
 
-  const xmlName = buildFilename("xml");
-  filePill.textContent = xmlName;
-  downloadText(toExcelXml(data), xmlName, "application/vnd.ms-excel");
+  const csvName = buildFilename("csv");
+  filePill.textContent = csvName;
+  downloadText(toCSV(data), csvName, "text/csv");
   warnOnUnload = false;
   updateProgressBar(false);
 }
@@ -764,7 +735,7 @@ btnToPractice.addEventListener("click", () => {
 });
 
 btnDownloadCsv.addEventListener("click", () => {
-  downloadText(toExcelXml(data), buildFilename("xml"), "application/vnd.ms-excel");
+  downloadText(toCSV(data), buildFilename("csv"), "text/csv");
 });
 
 btnRestart.addEventListener("click", () => {
